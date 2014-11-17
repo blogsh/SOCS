@@ -5,7 +5,7 @@ class EmptyWorld(BaseWorld):
 	SETTINGS =  []
 
 	def __init__(self, settings):
-		World.__init__(self, settings)
+		BaseWorld.__init__(self, settings)
 		# Implement initialization here
 
 	def step(self):
@@ -16,14 +16,14 @@ class EmptyWorldRenderer(BaseWorldRenderer):
 	SETTINGS = []
 
 	def __init__(self, world, settings):
-		BaseRenderer.__init__(self, world, settings)
+		BaseWorldRenderer.__init__(self, world, settings)
 		# Implement initialization here
 
-	def render(self):
+	def render(self, render):
 		# Implement rendering here
 		pass
 
-if __name__ == '__init__':
-	from environment import GUIEnvironment
-	env = GUIEnvironment(EmptyWorld, EmptyWorldRenderer)
+if __name__ == '__main__':
+	from gui import Environment
+	env = Environment(EmptyWorld, EmptyWorldRenderer)
 	env.run()

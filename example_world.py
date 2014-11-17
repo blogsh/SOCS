@@ -1,4 +1,6 @@
 import random
+from math import sqrt
+import numpy as np
 
 # This is an example world that does the following:
 #
@@ -27,10 +29,10 @@ class ExampleAgent:
 
 class ExampleWorld(BaseWorld):
 	SETTINGS =  [
-		("Number of Agents", 	"numberOfAgents",		int, 	100),
-		("World Size", 			"size", 				int, 	200),
-		("Lake Radius", 		"radius", 				int,	50).
-		("Movement Rate",		"movementRate",			float, 	0.3)
+		("Number of Agents", 	"numberOfAgents",		int, 	'100'),
+		("World Size", 			"size", 				int, 	'200'),
+		("Lake Radius", 		"radius", 				int,	'50'),
+		("Movement Rate",		"movementRate",			float, 	'0.3')
 	]
 
 	# Just validate the position (within the world boundaries? not within the lake?)
@@ -54,21 +56,24 @@ class ExampleWorld(BaseWorld):
 
 		x = round(random.random() * size)
 
-		if random.random() > 0.5: 
-			# left side of the lake
-			y_max = center + sqrt(radius**2 - (x - center))
-			y = random.random() * y_max
-		else: 
-			# right side of the lake
-			y_min = center - sqrt(radius**2 - (x - center))
-			y = y_min + (size - y_min) * random.random()
+		if x < center - radius or x > center + radius:
+			y = random.random() * size
+		else:
+			if random.random() > 0.5: 
+				# left side of the lake
+				y_max = center - sqrt(radius**2 - (x - center)**2)
+				y = random.random() * y_max
+			else: 
+				# right side of the lake
+				y_min = center + sqrt(radius**2 - (x - center)**2)
+				y = y_min + (size - y_min) * random.random()
 
 		return ExampleAgent(x, y)
 
 	# Generate all the agents
 	def __init__(self, settings):
 		""" Inits the agents """
-		World.__init__(self, settings)
+		BaseWorld.__init__(self, settings)
 		self.agents = [self.generate_agent() for i in range(settings['numberOfAgents'])]
 
 	# The movement happens with a certain probability and 
@@ -77,8 +82,8 @@ class ExampleWorld(BaseWorld):
 		if random.random() < self.settings['movementRate']:
 			(x, y) = (agent.x, agent.y)
 
-			x += int((random() * 0.5 - 1) * 2.0)
-			y += int((random() * 0.5 - 1) * 2.0)
+			x += round((random.random() - 0.5) * 2.0)
+			y += round((random.random() - 0.5) * 2.0)
 
 			if self.is_valid_position(x, y):
 				(agent.x, agent.y) = (x, y)
@@ -87,7 +92,7 @@ class ExampleWorld(BaseWorld):
 	# only move. No predator-prey behavior yet or anything yet!
 	def step(self):
 		""" Performs one step of the lake world """
-		for agent in agents: self.move(agent)
+		for agent in self.agents: self.move(agent)
 
 # While the World defines the simulation itself, the WorldRenderer
 # defines how to display the world. The basic renderer defines
@@ -109,35 +114,44 @@ class ExampleWorld(BaseWorld):
 #
 
 class ExampleWorldRenderer(BaseWorldRenderer):
-	SETTINGS = {
-		("Show Lake",	"showLake",		bool,	True)
-	}
+	SETTINGS = [
+		("Show Lake",	"showLake",		bool,	'True')
+	]
 
 	# No fancy initialization things
 	def __init__(self, world, settings):
-		BaseRenderer.__init__(self, world, settings)
+		BaseWorldRenderer.__init__(self, world, settings)
+		self.update_field()
 
-		size = world.settings['size']
-		
+		world.settings.listeners.append(self.on_change_settings)
+
+	def on_change_settings(self, key, value):
+		if key == "radius": self.update_field()
+
+	def update_field(self):
+		size = self.world.settings['size']
 		self.field = np.zeros((size, size))
-		self.set_size(size, size)
 
-		for x, y in zip(range(size), range(size)):
-			self.field[x, y] = self.world.is_valid_position(x, y) * 1.0
+		for x in range(size):
+			for y in range(size):
+				self.field[x, y] = self.world.is_valid_position(x, y) * 1.0
 
-	def render(self):
+	def render(self, render):
 		# Render the field (the lake) if the settings is True
 		# In the GUI it can be changed on the fly during the simulation
 
+		size = self.world.settings['size']
+		render.set_size((size, size))
+
 		if self.settings['showLake']:
-			self.render_field(self.field, (0.0, 0.0, 1.0))
+			render.field(self.field, (0.0, 0.0, 1.0))
 
 		# Render the agents with a different color for the two types
-		for agent in self.world.get_agents():
-			self.render_agent(agent.position, (0.0, 0.0, 0.0))
+		for agent in self.world.agents:
+			render.agent((agent.x, agent.y), (0.0, 0.0, 0.0))
 
 # If the script is executed as the main script
-if __name__ == '__init__':
+if __name__ == '__main__':
 	from gui import Environment
 	#from text import Environment
 	

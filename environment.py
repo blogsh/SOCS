@@ -41,6 +41,7 @@ class WorldRenderer:
 	def __init__(self, world, settings):
 		self.world = world
 		self.settings = settings
+		self._renderer = None
 
 	def render(self):
 		raise NotImplemented()
