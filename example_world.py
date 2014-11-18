@@ -152,11 +152,13 @@ class ExampleWorldRenderer(BaseWorldRenderer):
 
 # If the script is executed as the main script
 if __name__ == '__main__':
-	from gui import Environment
+	from mplib import Environment
 	#from text import Environment
 	
 	# Create a GUI environment, pass the world and the renderer
 	# and let it run!
 
-	env = Environment(ExampleWorld, ExampleWorldRenderer)
+	settings = {}
+
+	env = Environment(ExampleWorld, ExampleWorldRenderer, settings)
 	env.run()
