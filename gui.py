@@ -108,6 +108,7 @@ class MainWindow(gtk.Window):
 
 	def create_treeview_renderer(self, purpose):
 		renderer = gtk.CellRendererText()#editable = True)
+		renderer.set_property("editable", True)
 		renderer.connect("edited", self.on_treeview_edit, purpose)
 		return renderer
 
