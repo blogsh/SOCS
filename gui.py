@@ -1,30 +1,36 @@
-from gi.repository import Gtk, Gdk, GLib, GObject
+import pygtk
+pygtk.require('2.0')
+import gtk
+import gobject
+
 import cairo
 import util
 import numpy as np
 
-class RenderArea(Gtk.DrawingArea):
+class RenderArea(gtk.DrawingArea):
 	def __init__(self):
-		Gtk.DrawingArea.__init__(self)
-		self.connect("draw", self.draw)
+		gtk.DrawingArea.__init__(self)
+		self.connect("expose_event", self.draw)
 		self.renderer = None
 		self.context = None
 
 	def draw(self, widget, ctx):
+		ctx = widget.window.cairo_create()
+
 		if self.renderer is not None:
 			self.renderer(ctx, self.get_allocation())
 
 		return False
 
-class MainWindow(Gtk.Window):
+class MainWindow(gtk.Window):
 	def __init__(self, worldSettingsResolver, rendererSettingsResolver):
-		Gtk.Window.__init__(self, title='SOCS Project')
+		gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
 
 		self.worldSettingsResolver = worldSettingsResolver
 		self.rendererSettingsResolver = rendererSettingsResolver
 
-		self.worldSettingsStore = Gtk.ListStore(str, str, str)
-		self.rendererSettingsStore = Gtk.ListStore(str, str, str)
+		self.worldSettingsStore = gtk.ListStore(str, str, str)
+		self.rendererSettingsStore = gtk.ListStore(str, str, str)
 
 		self.setup_layout()
 
@@ -63,22 +69,26 @@ class MainWindow(Gtk.Window):
 
 		self.canvas.set_size_request(400, 400)
 
-		rightBox = Gtk.VBox()
+		rightBox = gtk.VBox()
 		rightBox.pack_start(self.controlPanel, False, True, 0)
 		rightBox.pack_start(self.treeviewNotebook, True, True, 0)
 
-		layoutBox = Gtk.Paned()
-		layoutBox.pack1(self.canvas, True)
-		layoutBox.pack2(rightBox, False)
+		#layoutBox = gtk.Paned()
+		#layoutBox.pack1(self.canvas, True)
+		#layoutBox.pack2(rightBox, False)
+
+		layoutBox = gtk.HBox()
+		layoutBox.pack_start(self.canvas, True, True, 0)
+		layoutBox.pack_start(rightBox, False, True, 0)
 
 		self.add(layoutBox)
 
 	def setup_control_panel(self):
-		self.startStopButton = Gtk.Button('Run')
-		self.resetWorldButton = Gtk.Button('Reset World')
-		self.resetSettingsButton = Gtk.Button('Reset Settings')
+		self.startStopButton = gtk.Button('Run')
+		self.resetWorldButton = gtk.Button('Reset World')
+		self.resetSettingsButton = gtk.Button('Reset Settings')
 
-		self.controlPanel = Gtk.VBox()
+		self.controlPanel = gtk.VBox()
 		self.controlPanel.pack_start(self.startStopButton, True, True, 0)
 		self.controlPanel.pack_start(self.resetWorldButton, True, True, 0)
 		self.controlPanel.pack_start(self.resetSettingsButton, True, True, 0)
@@ -89,32 +99,32 @@ class MainWindow(Gtk.Window):
 	def setup_treeview_panel(self):
 		self.setup_treeviews()
 
-		worldLabel = Gtk.Label("World")
-		rendererLabel = Gtk.Label("Renderer")
+		worldLabel = gtk.Label("World")
+		rendererLabel = gtk.Label("Renderer")
 
-		self.treeviewNotebook = Gtk.Notebook()
+		self.treeviewNotebook = gtk.Notebook()
 		self.treeviewNotebook.append_page(self.worldSettingsTree, worldLabel)
 		self.treeviewNotebook.append_page(self.rendererSettingsTree, rendererLabel)
 
 	def create_treeview_renderer(self, purpose):
-		renderer = Gtk.CellRendererText(editable = True)
+		renderer = gtk.CellRendererText()#editable = True)
 		renderer.connect("edited", self.on_treeview_edit, purpose)
 		return renderer
 
 	def setup_treeviews(self):
-		self.worldSettingsTree = Gtk.TreeView(self.worldSettingsStore)
-		self.rendererSettingsTree = Gtk.TreeView(self.rendererSettingsStore)
+		self.worldSettingsTree = gtk.TreeView(self.worldSettingsStore)
+		self.rendererSettingsTree = gtk.TreeView(self.rendererSettingsStore)
 
-		column = Gtk.TreeViewColumn("Name", Gtk.CellRendererText(), text = 0,)
+		column = gtk.TreeViewColumn("Name", gtk.CellRendererText(), text = 0,)
 		self.worldSettingsTree.append_column(column = column)
 
-		column = Gtk.TreeViewColumn("Value", self.create_treeview_renderer("world"), text = 1)
+		column = gtk.TreeViewColumn("Value", self.create_treeview_renderer("world"), text = 1)
 		self.worldSettingsTree.append_column(column = column)
 
-		column = Gtk.TreeViewColumn("Name", Gtk.CellRendererText(), text = 0)
+		column = gtk.TreeViewColumn("Name", gtk.CellRendererText(), text = 0)
 		self.rendererSettingsTree.append_column(column = column)
 
-		column = Gtk.TreeViewColumn("Value", self.create_treeview_renderer("renderer"), text = 1)
+		column = gtk.TreeViewColumn("Value", self.create_treeview_renderer("renderer"), text = 1)
 		self.rendererSettingsTree.append_column(column = column)
 
 	def on_treeview_edit(self, widget, path, value, purpose):
@@ -215,13 +225,13 @@ class Environment:
 
 	def start_worker(self):
 		if not self.running:
-			self.workerInstance = GObject.timeout_add(1, self.worker)
+			self.workerInstance = gobject.timeout_add(1, self.worker)
 			self.running = True
 
 	def stop_worker(self):
 		if self.running:
 			self.running = False
-			GObject.source_remove(self.workerInstance)
+			gobject.source_remove(self.workerInstance)
 			self.workerInstance = None
 
 	def on_start_stop(self, widget):
@@ -244,7 +254,7 @@ class Environment:
 		#self.mainWindow.update_settings()
 
 	def stop(self, widget = None, data = None):
-		Gtk.main_quit()
+		gtk.main_quit()
 
 	def run(self):
-		Gtk.main()
+		gtk.main()
