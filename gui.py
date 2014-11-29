@@ -1,4 +1,5 @@
 from gi.repository import Gtk, Gdk, GLib, GObject
+
 import cairo
 import util
 import numpy as np
@@ -134,10 +135,12 @@ class MainWindow(Gtk.Window):
 class CairoRenderer:
 	def __init__(self, worldRenderer):
 		self.size = (100, 100)
+		self.rect = (0, 0)
 		self.worldRenderer = worldRenderer
 		self.sx = 1.0
 		self.sy = 1.0
 		self.ctx = None
+		self.cache = {}
 
 	def agent(self, position, color):
 		self.ctx.set_source_rgb(color[0], color[1], color[2])
@@ -148,30 +151,59 @@ class CairoRenderer:
 		)
 		self.ctx.fill()
 
-	def field(self, field, color):
+	def field(self, field, color, cache_id = None):
+		if cache_id in self.cache:
+			self.ctx.set_source_surface(self.cache[cache_id])
+			self.ctx.paint()
+			return
+
+		image = cairo.ImageSurface(cairo.FORMAT_ARGB32, self.rect[0], self.rect[1])
+		ctx = cairo.Context(image)
+
 		for x in range(self.size[0]):
 			for y in range(self.size[1]):
-				self.ctx.set_source_rgba(
+				ctx.set_source_rgba(
 					color[0],
 					color[1],
 					color[2],
 					1.0 - field[x, y]
 				)
-				self.ctx.rectangle(
+				ctx.rectangle(
 					x * self.sx, y * self.sy,
 					self.sx, self.sy
 				)
-				self.ctx.fill()
+				ctx.fill()
+
+		self.ctx.set_source_surface(image)
+		self.ctx.paint()
+
+		if cache_id is not None:
+			self.cache[cache_id] = image
 
 	def set_size(self, size):
-		self.size = size
+		self.update_geometry(size, self.rect)
+
+	def update_geometry(self, size, rect, enforce = False):
+		changed = False
+
+		if size[0] != self.size[0] or size[1] != self.size[1]:
+			self.size = size
+			changed = True
+
+		if self.rect[0] != rect[0] or self.rect[1] != rect[1]:
+			self.rect = rect
+			changed = True
+
+		if changed or enforce:
+			self.sx = float(self.rect[0]) / float(self.size[0])
+			self.sy = float(self.rect[1]) / float(self.size[1])
+			self.cache = {}
 
 	def render(self, ctx, rect):
-		self.sx = rect.width / self.size[0]
-		self.sy = rect.height / self.size[1]
+		self.update_geometry(self.size, (rect.width, rect.height))
 		self.ctx = ctx
 
-		self.ctx.rectangle(0, 0, rect.width, rect.height)
+		self.ctx.rectangle(0, 0, self.rect[0], self.rect[1])
 		self.ctx.set_source_rgb(1.0, 1.0, 1.0)
 		self.ctx.fill()
 

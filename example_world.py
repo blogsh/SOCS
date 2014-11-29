@@ -126,7 +126,7 @@ class ExampleWorldRenderer(BaseWorldRenderer):
 		world.settings.listeners.append(self.on_change_settings)
 
 	def on_change_settings(self, key, value):
-		if key == "radius": self.update_field()
+		if key == "radius" or key == "size": self.update_field()
 
 	def update_field(self):
 		size = self.world.settings['size']
@@ -144,7 +144,7 @@ class ExampleWorldRenderer(BaseWorldRenderer):
 		render.set_size((size, size))
 
 		if self.settings['showLake']:
-			render.field(self.field, (0.0, 0.0, 1.0))
+			render.field(self.field, (0.0, 0.0, 1.0), self.world.settings['radius'])
 
 		# Render the agents with a different color for the two types
 		for agent in self.world.agents:
