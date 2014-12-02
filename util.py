@@ -19,7 +19,7 @@ class SettingDefinition:
 		if self.datatype == float:
 			return '%f' % value
 		if self.datatype == str:
-			return value.trim()
+			return value.strip()
 		if self.datatype == bool:
 			if value: return "True"
 			else: return "False"

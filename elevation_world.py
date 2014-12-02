@@ -13,11 +13,12 @@ class ElevationWorld(BaseWorld):
     SETTINGS =  [
         ("Number of Agents",    "numberOfAgents",       int,    '100'),
         ("Movement Rate",       "movementRate",         float,  '0.5'),
+        ("Elevation file",       "elevationMap",         str,  'testmap.png'),
     ]
 
     def __init__(self, settings):
         BaseWorld.__init__(self, settings)
-        self.elevation = imread("testmap.png", flatten = True)
+        self.elevation = imread(self.settings['elevationMap'], flatten = True)
         self.size = self.elevation.shape[0]
         self.lattice = [[[] for _ in range(self.size)] for _ in range(self.size)]
         self.agents = [self.generate_agent() 
@@ -82,7 +83,7 @@ class ElevationWorldRenderer(BaseWorldRenderer):
     def render(self, render):
         render.set_size((self.world.size, self.world.size))
         
-        render.background("testmap.png")
+        render.background(self.world.settings["elevationMap"])
         
         # Render the agents with a different color for the two types
         for agent in self.world.agents:
