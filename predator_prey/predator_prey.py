@@ -1,7 +1,6 @@
 import numpy as np
 import numpy.random
 import matplotlib.pyplot as plt
-from scipy.misc import imread
 from noise import snoise2
 import random
 
