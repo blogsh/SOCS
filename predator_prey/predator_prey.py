@@ -59,16 +59,17 @@ class ElevationWorld:
             return None
             
         agent = Agent()
-        agent.x, agent.y = pos
+        agent.pos = pos
         agent.type = type
         agent.preferred_terrain = self.preferred_terrain[type]
-        
-        self.lattice[agent.x][agent.y].append(agent)
+        x, y = agent.pos
+        self.lattice[x][y].append(agent)
         self.agents.append(agent)
         return agent
         
     def remove_agent(self, agent):
-        self.lattice[agent.x][agent.y].remove(agent)
+        x, y = agent.pos
+        self.lattice[x][y].remove(agent)
         self.agents.remove(agent)
     
     def step(self):
@@ -78,7 +79,7 @@ class ElevationWorld:
                 # NOTE(Pontus): This makes them prefer directions 
                 # that lead closer to preferred terrain
                 new_positions = list(filter(self.is_empty_position,
-                                            self.neighbors((agent.x, agent.y))))
+                                            self.neighbors(agent.pos)))
                 if not new_positions:
                     continue
                 weights = [1 / abs(self.terrain[new_pos] - agent.preferred_terrain)
@@ -86,24 +87,25 @@ class ElevationWorld:
                 probabilities = np.array(weights) / np.sum(weights)
                 i = np.random.choice(len(new_positions), p=probabilities)
                 new_x, new_y = new_positions[i]
-                self.lattice[agent.x][agent.y].remove(agent)
                 self.lattice[new_x][new_y].append(agent)
-                agent.x, agent.y = new_x, new_y
+                x, y = agent.pos
+                self.lattice[x][y].remove(agent)
+                agent.pos = new_x, new_y
             
             if agent.type == PREY:
                 prey = agent
-                is_in_water = self.terrain[prey.x, prey.y] < 0
+                is_in_water = self.terrain[prey.pos] < 0
                 if is_in_water and (random.random() < self.drowning_rate):
                     self.remove_agent(prey)
                     continue
                 # reproduce
                 if random.random() < self.prey_birth_probability:
-                    self.create_agent(PREY, near=(prey.x, prey.y))
+                    self.create_agent(PREY, near=prey.pos)
             
             if agent.type == PREDATOR:
                 predator = agent
                 # eat and reproduce
-                for (x, y) in self.neighbors((predator.x, predator.y)):
+                for (x, y) in self.neighbors(predator.pos):
                     for neighbor in self.lattice[x][y]:
                         if neighbor.type == PREY:
                             # NOTE(Pontus): They are vampires ;)
@@ -144,9 +146,9 @@ class ElevationWorld:
         prey_positions     = np.zeros(size, dtype = int)
         for i, agent in enumerate(self.agents):
             if agent.type == PREDATOR:
-                predator_positions[i, :] = agent.x, agent.y
+                predator_positions[i, :] = agent.pos
             else:
-                prey_positions[i, :]     = agent.x, agent.y
+                prey_positions[i, :]     = agent.pos
         plt.plot(predator_positions[:,0], predator_positions[:, 1], "ro")
         plt.plot(prey_positions[:,0], prey_positions[:, 1], "go")
         plt.axis("tight")
