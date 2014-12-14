@@ -11,7 +11,7 @@ PREY = "Prey"
 class Agent:
     pass
 
-class ElevationWorld:
+class PredatorPreyModel:
     initial_predator_count = 30
     initial_prey_count = 50
     predator_death_probability = 0.05
@@ -30,19 +30,23 @@ class ElevationWorld:
         [self.create_agent(PREY)     for i in range(self.initial_prey_count)]
 
     def run(self, animation = False, iteration_count = 10000):
-        counts = np.zeros((2, iteration_count), dtype=int)
+        population_counts = np.zeros((2, iteration_count), dtype=int)
         for t in range(iteration_count):
             self.step()
             if animation:
                 self.draw()
             for agent in self.agents:
                 if agent.type == PREDATOR:
-                    counts[0,t] += 1
+                    population_counts[0,t] += 1
                 else:
-                    counts[1,t] += 1
-        return counts
+                    population_counts[1,t] += 1
+        return population_counts
     
     def generate_terrain(self, water_level, period, fractal_depth):
+        """
+        Generates a pseudo-random terrain matrix. 
+        Values > 0 are land and values < 0 are water.
+        """
         width, height = self.grid_shape
         terrain_iterator = (snoise2(i / period, j / period, fractal_depth) 
                             for i in range(width)
@@ -54,15 +58,15 @@ class ElevationWorld:
             pos = random.choice(list(self.neighbors(near)))
         else:
             pos = tuple(random.randrange(size) for size in self.grid_shape)
+        # NOTE(Pontus): This makes sure that
+        # the more crowded it is, the less agents will be born
         if not self.is_safe_position(pos):
-            # The more crowded, the less new agents
             return None
             
         agent = Agent()
-        agent.pos = pos
         agent.type = type
         agent.preferred_terrain = self.preferred_terrain[type]
-        x, y = agent.pos
+        agent.pos = x, y = pos
         self.lattice[x][y].append(agent)
         self.agents.append(agent)
         return agent
@@ -94,24 +98,25 @@ class ElevationWorld:
             
             if agent.type == PREY:
                 prey = agent
+                # Drown
                 is_in_water = self.terrain[prey.pos] < 0
                 if is_in_water and (random.random() < self.drowning_rate):
                     self.remove_agent(prey)
                     continue
-                # reproduce
+                # Reproduce
                 if random.random() < self.prey_birth_probability:
                     self.create_agent(PREY, near=prey.pos)
             
             if agent.type == PREDATOR:
                 predator = agent
-                # eat and reproduce
+                # Eat and reproduce
                 for (x, y) in self.neighbors(predator.pos):
                     for neighbor in self.lattice[x][y]:
                         if neighbor.type == PREY:
-                            # NOTE(Pontus): They are vampires ;)
                             neighbor.type = PREDATOR 
+                            # NOTE(Pontus): They are vampires ;)
                         
-                # die from old age
+                # Die
                 if random.random() < self.predator_death_probability:
                     self.remove_agent(predator)
             
@@ -141,6 +146,8 @@ class ElevationWorld:
         terrain_max = np.amax(abs(self.terrain))
         plt.imshow(self.terrain.T, cmap=plt.cm.coolwarm, 
                    vmin = -terrain_max, vmax = terrain_max)
+        
+        # TODO(Pontus): These should not be allocated at each timestep
         size = (len(self.agents), 2)
         predator_positions = np.zeros(size, dtype = int)
         prey_positions     = np.zeros(size, dtype = int)
@@ -149,6 +156,10 @@ class ElevationWorld:
                 predator_positions[i, :] = agent.pos
             else:
                 prey_positions[i, :]     = agent.pos
+        
+        # TODO(Pontus): Improve performance of this plot by not 
+        # redrawing the entire thing every time
+        # see: http://matplotlib.org/examples/animation/simple_anim.html
         plt.plot(predator_positions[:,0], predator_positions[:, 1], "ro")
         plt.plot(prey_positions[:,0], prey_positions[:, 1], "go")
         plt.axis("tight")
@@ -159,7 +170,7 @@ class ElevationWorld:
 
 if __name__ == '__main__':
     iteration_count = 1000
-    world = ElevationWorld()
+    world = PredatorPreyModel()
     counts = world.run(animation = True, iteration_count=iteration_count)
     
     # Plots over time
