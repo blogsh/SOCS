@@ -12,7 +12,7 @@ class Agent:
     pass
 
 class PredatorPreyModel:
-    initial_predator_count = 30
+    initial_predator_count = 50
     initial_prey_count = 50
     predator_death_probability = 0.05
     prey_birth_probability = 0.2
@@ -23,7 +23,8 @@ class PredatorPreyModel:
 
     def __init__(self):
         width, height = self.grid_shape
-        self.terrain = self.generate_terrain(water_level=0.2, period=30, fractal_depth=2)
+        self.terrain = self.generate_terrain(water_level=0.2, period=30, 
+                                             fractal_depth=2, randomly=True)
         self.lattice = [[[] for _ in range(width)] for _ in range(height)]
         self.agents = []
         [self.create_agent(PREDATOR) for i in range(self.initial_predator_count)]
@@ -42,13 +43,20 @@ class PredatorPreyModel:
                     population_counts[1,t] += 1
         return population_counts
     
-    def generate_terrain(self, water_level, period, fractal_depth):
+    def generate_terrain(self, water_level, period, fractal_depth, randomly=False):
         """
         Generates a pseudo-random terrain matrix. 
         Values > 0 are land and values < 0 are water.
+        `water_level` is a number between -1 and 1, where -1 is all land and 1 is all ocean.
+        `period` controls the shape of the landscape.
+        If `randomly` is false, the same landscape will be generated every time.
         """
+        if randomly:
+            start = random.random() * 1e5
+        else:
+            start = 0
         width, height = self.grid_shape
-        terrain_iterator = (snoise2(i / period, j / period, fractal_depth) 
+        terrain_iterator = (snoise2(start + i / period, start + j / period, fractal_depth) 
                             for i in range(width)
                             for j in range(height))
         return np.fromiter(terrain_iterator, float).reshape(self.grid_shape) - water_level
