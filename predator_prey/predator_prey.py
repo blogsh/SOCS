@@ -53,7 +53,7 @@ class ElevationWorld:
         if near:
             pos = random.choice(list(self.neighbors(near)))
         else:
-            pos = tuple(np.random.randint(size) for size in self.grid_shape)
+            pos = tuple(random.randrange(size) for size in self.grid_shape)
         if not self.is_safe_position(pos):
             # The more crowded, the less new agents
             return None
@@ -74,7 +74,7 @@ class ElevationWorld:
     def step(self):
         for agent in self.agents:
             # move
-            if np.random.rand() < self.movement_rate:
+            if random.random() < self.movement_rate:
                 # NOTE(Pontus): This makes them prefer directions 
                 # that lead closer to preferred terrain
                 new_positions = list(filter(self.is_empty_position,
@@ -93,11 +93,11 @@ class ElevationWorld:
             if agent.type == PREY:
                 prey = agent
                 is_in_water = self.terrain[prey.x, prey.y] < 0
-                if is_in_water and (np.random.rand() < self.drowning_rate):
+                if is_in_water and (random.random() < self.drowning_rate):
                     self.remove_agent(prey)
                     continue
                 # reproduce
-                if np.random.rand() < self.prey_birth_probability:
+                if random.random() < self.prey_birth_probability:
                     self.create_agent(PREY, near=(prey.x, prey.y))
             
             if agent.type == PREDATOR:
@@ -110,7 +110,7 @@ class ElevationWorld:
                             neighbor.type = PREDATOR 
                         
                 # die from old age
-                if np.random.rand() < self.predator_death_probability:
+                if random.random() < self.predator_death_probability:
                     self.remove_agent(predator)
             
     def neighbors(self, pos):
