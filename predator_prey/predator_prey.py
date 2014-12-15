@@ -114,6 +114,8 @@ class PredatorPreyModel:
     def step(self):
         for agent in self.agents:
             # move
+            # TODO(Pontus): Maybe just remove the movement rate and let the
+            # current position be a possible new position?
             if random.random() < self.movement_rate:
                 new_positions = list(filter(self.is_empty_position,
                                             self.neighbors(agent.pos)))
@@ -144,6 +146,8 @@ class PredatorPreyModel:
                                 self.remove_agent(neighbor)
                         
                 # Die
+                # TODO(Pontus): Let them die of starvation (time_since_last_meal)
+                # instead of randomly?
                 if random.random() < self.predator_death_probability:
                     self.remove_agent(predator)
             
