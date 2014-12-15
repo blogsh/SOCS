@@ -9,7 +9,9 @@ PREDATOR = "Predator"
 PREY = "Prey"
 
 class Agent:
-    pass
+    def __init__(self, type, pos):
+        self.type = type
+        self.pos = pos
 
 class PredatorPreyModel:
     initial_predator_count = 200
@@ -32,7 +34,7 @@ class PredatorPreyModel:
     def run(self, animating = False, iteration_count = 10000):
         population_counts = np.zeros((2, iteration_count), dtype=int)
         if animating:
-            init_drawing
+            self.init_drawing()
             
         for t in range(iteration_count):
             self.step()
@@ -98,9 +100,8 @@ class PredatorPreyModel:
         if not self.is_safe_position(pos):
             return None
             
-        agent = Agent()
-        agent.type = type
-        agent.pos = x, y = pos
+        agent = Agent(type, pos)
+        x, y = pos
         self.lattice[x][y].append(agent)
         self.agents.append(agent)
         return agent
