@@ -17,7 +17,7 @@ class PredatorPreyModel:
     predator_death_probability = 0.02
     prey_birth_probability = 0.06
     predator_birth_rate = 0.8
-    movement_rate = 1
+    movement_rate = 0.8
     grid_shape = (100, 100)
 
     def __init__(self):
@@ -32,14 +32,7 @@ class PredatorPreyModel:
     def run(self, animating = False, iteration_count = 10000):
         population_counts = np.zeros((2, iteration_count), dtype=int)
         if animating:
-            # NOTE(Pontus): This rescales the colormap so that zero is in the middle
-            terrain_max = np.amax(abs(self.terrain))
-            plt.imshow(self.terrain.T, cmap=plt.cm.coolwarm, 
-                       vmin = -terrain_max, vmax = terrain_max)
-            predator_line, = plt.plot([], [], "ro")
-            prey_line,     = plt.plot([], [], "go")
-            self.predator_plot = predator_line
-            self.prey_plot     = prey_line
+            init_drawing
             
         for t in range(iteration_count):
             self.step()
@@ -50,23 +43,29 @@ class PredatorPreyModel:
                     population_counts[0,t] += 1
                 else:
                     population_counts[1,t] += 1
-        plt.close()
+                    
+        if animating:
+            plt.close()
+            
         return population_counts
     
+    def init_drawing(self):
+        # NOTE(Pontus): This rescales the colormap so that zero is in the middle
+        terrain_max = np.amax(abs(self.terrain))
+        plt.imshow(self.terrain.T, cmap=plt.cm.coolwarm, 
+                   vmin = -terrain_max, vmax = terrain_max)
+        plt.axis("tight")
         
-        
+        self.predator_plot, = plt.plot([], [], "ro")
+        self.prey_plot,     = plt.plot([], [], "go")
+    
     def draw(self):
-        # TODO(Pontus): These should not be allocated at each timestep
-        size = (len(self.agents), 2)
-        predator_positions = np.zeros(size, dtype = int)
-        prey_positions     = np.zeros(size, dtype = int)
-        for i, agent in enumerate(self.agents):
-            if agent.type == PREDATOR:
-                predator_positions[i, :] = agent.pos
-            else:
-                prey_positions[i, :]     = agent.pos
-        self.predator_plot.set_data(predator_positions[:,0], predator_positions[:, 1])
-        self.prey_plot.set_data(prey_positions[:,0], prey_positions[:, 1])
+        predator_positions = np.array([agent.pos for agent in self.agents
+                                                 if agent.type == PREDATOR])
+        prey_positions = np.array([agent.pos for agent in self.agents
+                                                 if agent.type == PREY])
+        self.predator_plot.set_data(predator_positions.T)
+        self.prey_plot.set_data(prey_positions.T)
         plt.draw()
         plt.pause(0.0001)
     
@@ -171,7 +170,7 @@ class PredatorPreyModel:
 if __name__ == '__main__':
     iteration_count = 1000
     world = PredatorPreyModel()
-    counts = world.run(animating = False, iteration_count=iteration_count)
+    counts = world.run(animating = True, iteration_count=iteration_count)
     
     fig, (dynamics_plot, phase_plot, frequency_plot) = plt.subplots(1, 3)
 
