@@ -12,36 +12,63 @@ class Agent:
     pass
 
 class PredatorPreyModel:
-    initial_predator_count = 50
-    initial_prey_count = 50
-    predator_death_probability = 0.05
-    prey_birth_probability = 0.2
-    drowning_rate = 0.02
-    movement_rate = 0.5
-    preferred_terrain = {PREDATOR: 0.1, PREY: 0.9}
+    initial_predator_count = 200
+    initial_prey_count = 200
+    predator_death_probability = 0.02
+    prey_birth_probability = 0.06
+    predator_birth_rate = 0.8
+    movement_rate = 1
     grid_shape = (100, 100)
 
     def __init__(self):
         width, height = self.grid_shape
-        self.terrain = self.generate_terrain(water_level=0.2, period=30, 
+        self.terrain = self.generate_terrain(water_level=0.2, period=50, 
                                              fractal_depth=2, randomly=True)
         self.lattice = [[[] for _ in range(width)] for _ in range(height)]
         self.agents = []
         [self.create_agent(PREDATOR) for i in range(self.initial_predator_count)]
         [self.create_agent(PREY)     for i in range(self.initial_prey_count)]
 
-    def run(self, animation = False, iteration_count = 10000):
+    def run(self, animating = False, iteration_count = 10000):
         population_counts = np.zeros((2, iteration_count), dtype=int)
+        if animating:
+            # NOTE(Pontus): This rescales the colormap so that zero is in the middle
+            terrain_max = np.amax(abs(self.terrain))
+            plt.imshow(self.terrain.T, cmap=plt.cm.coolwarm, 
+                       vmin = -terrain_max, vmax = terrain_max)
+            predator_line, = plt.plot([], [], "ro")
+            prey_line,     = plt.plot([], [], "go")
+            self.predator_plot = predator_line
+            self.prey_plot     = prey_line
+            
         for t in range(iteration_count):
             self.step()
-            if animation:
+            if animating:
                 self.draw()
             for agent in self.agents:
                 if agent.type == PREDATOR:
                     population_counts[0,t] += 1
                 else:
                     population_counts[1,t] += 1
+        plt.close()
         return population_counts
+    
+        
+        
+    def draw(self):
+        # TODO(Pontus): These should not be allocated at each timestep
+        size = (len(self.agents), 2)
+        predator_positions = np.zeros(size, dtype = int)
+        prey_positions     = np.zeros(size, dtype = int)
+        for i, agent in enumerate(self.agents):
+            if agent.type == PREDATOR:
+                predator_positions[i, :] = agent.pos
+            else:
+                prey_positions[i, :]     = agent.pos
+        self.predator_plot.set_data(predator_positions[:,0], predator_positions[:, 1])
+        self.prey_plot.set_data(prey_positions[:,0], prey_positions[:, 1])
+        plt.draw()
+        plt.pause(0.0001)
     
     def generate_terrain(self, water_level, period, fractal_depth, randomly=False):
         """
@@ -66,6 +93,7 @@ class PredatorPreyModel:
             pos = random.choice(list(self.neighbors(near)))
         else:
             pos = tuple(random.randrange(size) for size in self.grid_shape)
+            
         # NOTE(Pontus): This makes sure that
         # the more crowded it is, the less agents will be born
         if not self.is_safe_position(pos):
@@ -73,7 +101,6 @@ class PredatorPreyModel:
             
         agent = Agent()
         agent.type = type
-        agent.preferred_terrain = self.preferred_terrain[type]
         agent.pos = x, y = pos
         self.lattice[x][y].append(agent)
         self.agents.append(agent)
@@ -88,17 +115,11 @@ class PredatorPreyModel:
         for agent in self.agents:
             # move
             if random.random() < self.movement_rate:
-                # NOTE(Pontus): This makes them prefer directions 
-                # that lead closer to preferred terrain
                 new_positions = list(filter(self.is_empty_position,
                                             self.neighbors(agent.pos)))
                 if not new_positions:
                     continue
-                weights = [1 / abs(self.terrain[new_pos] - agent.preferred_terrain)
-                           for new_pos in new_positions]
-                probabilities = np.array(weights) / np.sum(weights)
-                i = np.random.choice(len(new_positions), p=probabilities)
-                new_x, new_y = new_positions[i]
+                new_x, new_y = random.choice(new_positions)
                 self.lattice[new_x][new_y].append(agent)
                 x, y = agent.pos
                 self.lattice[x][y].remove(agent)
@@ -106,11 +127,6 @@ class PredatorPreyModel:
             
             if agent.type == PREY:
                 prey = agent
-                # Drown
-                is_in_water = self.terrain[prey.pos] < 0
-                if is_in_water and (random.random() < self.drowning_rate):
-                    self.remove_agent(prey)
-                    continue
                 # Reproduce
                 if random.random() < self.prey_birth_probability:
                     self.create_agent(PREY, near=prey.pos)
@@ -121,8 +137,11 @@ class PredatorPreyModel:
                 for (x, y) in self.neighbors(predator.pos):
                     for neighbor in self.lattice[x][y]:
                         if neighbor.type == PREY:
-                            neighbor.type = PREDATOR 
-                            # NOTE(Pontus): They are vampires ;)
+                            if random.random() < self.predator_birth_rate:
+                                neighbor.type = PREDATOR 
+                                # NOTE(Pontus): They are vampires ;)
+                            else:
+                                self.remove_agent(neighbor)
                         
                 # Die
                 if random.random() < self.predator_death_probability:
@@ -148,55 +167,38 @@ class PredatorPreyModel:
         x_max, y_max = self.grid_shape
         return (0 <= x < x_max) and (0 <= y < y_max)
         
-        
-    def draw(self):
-        # NOTE(Pontus): This rescales the colormap so that zero is in the middle
-        terrain_max = np.amax(abs(self.terrain))
-        plt.imshow(self.terrain.T, cmap=plt.cm.coolwarm, 
-                   vmin = -terrain_max, vmax = terrain_max)
-        
-        # TODO(Pontus): These should not be allocated at each timestep
-        size = (len(self.agents), 2)
-        predator_positions = np.zeros(size, dtype = int)
-        prey_positions     = np.zeros(size, dtype = int)
-        for i, agent in enumerate(self.agents):
-            if agent.type == PREDATOR:
-                predator_positions[i, :] = agent.pos
-            else:
-                prey_positions[i, :]     = agent.pos
-        
-        # TODO(Pontus): Improve performance of this plot by not 
-        # redrawing the entire thing every time
-        # see: http://matplotlib.org/examples/animation/simple_anim.html
-        plt.plot(predator_positions[:,0], predator_positions[:, 1], "ro")
-        plt.plot(prey_positions[:,0], prey_positions[:, 1], "go")
-        plt.axis("tight")
-        plt.draw()
-        plt.pause(0.00001)
-        plt.cla()
-
 
 if __name__ == '__main__':
     iteration_count = 1000
     world = PredatorPreyModel()
-    counts = world.run(animation = True, iteration_count=iteration_count)
+    counts = world.run(animating = False, iteration_count=iteration_count)
     
-    # Plots over time
-    # TODO(Pontus): These plots should have the same limits
-    plt.subplot(2, 2, map_index + 1)
-    plt.title(map_file)
-    plt.plot(counts[0,:])
-    plt.plot(counts[1,:])
-    plt.legend([PREDATOR, PREY])
+    fig, (dynamics_plot, phase_plot, frequency_plot) = plt.subplots(1, 3)
+
+    dynamics_plot.plot(counts.T)
+    dynamics_plot.legend([PREDATOR, PREY])
+    dynamics_plot.set_title("Population dynamics")
+    dynamics_plot.set_xlabel(r"Time $t$")
+    dynamics_plot.set_ylabel(r"Population size")
     
-    # Plots over frequency
-    plt.subplot(2, 2, 2 + map_index + 1)
+    phase_plot.plot(counts[0,:], counts[1,:])
+    phase_plot.set_title("Phase diagram")
+    phase_plot.set_xlabel("Predator")
+    phase_plot.set_ylabel("Prey")
+    
     import numpy.fft
     # NOTE(Pontus): Skip constant freq f = 0
     counts_fft = abs(np.fft.rfft(counts))[:,1:] 
     f = np.fft.rfftfreq(iteration_count)[1:]
-    plt.plot(f, counts_fft[0,:])
-    plt.plot(f, counts_fft[1,:])
-    plt.legend([PREDATOR, PREY])
-    plt.axis("tight")
+    
+    frequency_plot.plot(f, counts_fft[0,:], label=PREDATOR)
+    frequency_plot.plot(f, counts_fft[1,:], label=PREY)
+    frequency_plot.legend()
+    frequency_plot.set_title("Frequency domain")
+    frequency_plot.set_xlabel("Frequency")
+    frequency_plot.set_ylabel("Amplitude")
+    frequency_plot.set_xscale("log")
+    frequency_plot.set_yscale("log")
+    frequency_plot.axis("tight")
+    
     plt.show()
