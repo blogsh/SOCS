@@ -18,13 +18,13 @@ class PredatorPreyModel:
     initial_prey_count = 200
     predator_death_probability = 0.02
     prey_birth_probability = 0.06
-    predator_birth_rate = 0.8
+    predator_birth_rate = 0.3
     movement_rate = 0.8
     grid_shape = (100, 100)
 
-    def __init__(self):
+    def __init__(self, period = 30):
         width, height = self.grid_shape
-        self.terrain = self.generate_terrain(water_level=0.2, period=50, 
+        self.terrain = self.generate_terrain(water_level=0.2, period=period, 
                                              fractal_depth=2, randomly=True)
         self.lattice = [[[] for _ in range(width)] for _ in range(height)]
         self.agents = []
@@ -53,13 +53,14 @@ class PredatorPreyModel:
     
     def init_drawing(self):
         # NOTE(Pontus): This rescales the colormap so that zero is in the middle
-        terrain_max = np.amax(abs(self.terrain))
-        plt.imshow(self.terrain.T, cmap=plt.cm.coolwarm, 
-                   vmin = -terrain_max, vmax = terrain_max)
+        # terrain_max = np.amax(abs(self.terrain))
+        # plt.imshow(self.terrain.T, cmap=plt.cm.coolwarm,
+        #            vmin = -terrain_max, vmax = terrain_max)
+        plt.imshow(self.terrain.T < 0, cmap=plt.cm.gray, vmin=-3)
         plt.axis("tight")
         
-        self.predator_plot, = plt.plot([], [], "ro")
-        self.prey_plot,     = plt.plot([], [], "go")
+        self.predator_plot, = plt.plot([], [], "r.")
+        self.prey_plot,     = plt.plot([], [], "g.")
     
     def draw(self):
         predator_positions = np.array([agent.pos for agent in self.agents
@@ -140,7 +141,7 @@ class PredatorPreyModel:
                     for neighbor in self.lattice[x][y]:
                         if neighbor.type == PREY:
                             if random.random() < self.predator_birth_rate:
-                                neighbor.type = PREDATOR 
+                                neighbor.type = PREDATOR
                                 # NOTE(Pontus): They are vampires ;)
                             else:
                                 self.remove_agent(neighbor)
@@ -173,12 +174,15 @@ class PredatorPreyModel:
         
 
 if __name__ == '__main__':
-    iteration_count = 1000
-    world = PredatorPreyModel()
-    counts = world.run(animating = True, iteration_count=iteration_count)
+    period = 30
+    world = PredatorPreyModel(period)
+    counts = world.run(animating = True, iteration_count = 1000)
     
-    fig, (dynamics_plot, phase_plot, frequency_plot) = plt.subplots(1, 3)
+    fig, ((map_plot, dynamics_plot), (phase_plot, frequency_plot)) = plt.subplots(2, 2)
 
+    map_plot.imshow(world.terrain.T < 0, cmap=plt.cm.gray, vmin=-3)
+    map_plot.set_title("Period: {}".format(period))
+    
     dynamics_plot.plot(counts.T)
     dynamics_plot.legend([PREDATOR, PREY])
     dynamics_plot.set_title("Population dynamics")
@@ -193,7 +197,7 @@ if __name__ == '__main__':
     import numpy.fft
     # NOTE(Pontus): Skip constant freq f = 0
     counts_fft = abs(np.fft.rfft(counts))[:,1:] 
-    f = np.fft.rfftfreq(iteration_count)[1:]
+    f = np.fft.rfftfreq(counts.shape[1])[1:]
     
     frequency_plot.plot(f, counts_fft[0,:], label=PREDATOR)
     frequency_plot.plot(f, counts_fft[1,:], label=PREY)
