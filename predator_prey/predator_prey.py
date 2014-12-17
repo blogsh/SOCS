@@ -55,6 +55,7 @@ class PredatorPreyModel:
         
         if animating:
             figure = plt.figure()
+            figure.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
             animation = FuncAnimation(figure, loop, init_func=self.init_drawing,
                                       frames=iteration_count)
         else:
@@ -200,7 +201,7 @@ if __name__ == '__main__':
         if not os.path.exists(directory):
             os.makedirs(directory)
         filename = "{}/{}.mp4".format(directory, datetime.now())
-        animation.save(filename, fps=20, codec="libx264")
+        animation.save(filename, fps=20, codec="libx264", extra_args=['-pix_fmt','yuv420p'])
         plt.show()
     
     fig, ((map_plot, dynamics_plot), (phase_plot, frequency_plot)) = plt.subplots(2, 2)
