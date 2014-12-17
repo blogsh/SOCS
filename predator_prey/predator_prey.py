@@ -12,19 +12,20 @@ class Agent:
     def __init__(self, type, pos):
         self.type = type
         self.pos = pos
+        self.time_since_last_meal = 0
 
 class PredatorPreyModel:
-    initial_predator_count = 200
+    initial_predator_count = 100
     initial_prey_count = 200
-    predator_death_probability = 0.02
+    starvation_time = 100
     prey_birth_probability = 0.06
-    predator_birth_rate = 0.3
+    predator_birth_rate = 0.5
     movement_rate = 0.8
     grid_shape = (100, 100)
 
-    def __init__(self, period = 30):
+    def __init__(self, period = 30, water_level=0.2):
         width, height = self.grid_shape
-        self.terrain = self.generate_terrain(water_level=0.2, period=period, 
+        self.terrain = self.generate_terrain(water_level=water_level, period=period, 
                                              fractal_depth=2, randomly=True)
         self.lattice = [[[] for _ in range(width)] for _ in range(height)]
         self.agents = []
@@ -38,13 +39,15 @@ class PredatorPreyModel:
             
         for t in range(iteration_count):
             self.step()
-            if animating:
-                self.draw()
             for agent in self.agents:
                 if agent.type == PREDATOR:
                     population_counts[0,t] += 1
                 else:
                     population_counts[1,t] += 1
+            if np.any(population_counts[:,t] == 0):
+                return population_counts[:,:t+1]
+            if animating:
+                self.draw()
                     
         if animating:
             plt.close()
@@ -56,7 +59,7 @@ class PredatorPreyModel:
         # terrain_max = np.amax(abs(self.terrain))
         # plt.imshow(self.terrain.T, cmap=plt.cm.coolwarm,
         #            vmin = -terrain_max, vmax = terrain_max)
-        plt.imshow(self.terrain.T < 0, cmap=plt.cm.gray, vmin=-3)
+        plt.imshow(self.terrain.T < 0, cmap=plt.cm.gray, vmin=-3, vmax=1)
         plt.axis("tight")
         
         self.predator_plot, = plt.plot([], [], "r.")
@@ -114,6 +117,12 @@ class PredatorPreyModel:
     
     def step(self):
         for agent in self.agents:
+            agent.time_since_last_meal += 1
+            # die
+            if agent.time_since_last_meal > self.starvation_time:
+                self.remove_agent(agent)
+                continue
+            
             # move
             # TODO(Pontus): Maybe just remove the movement rate and let the
             # current position be a possible new position?
@@ -130,6 +139,8 @@ class PredatorPreyModel:
             
             if agent.type == PREY:
                 prey = agent
+                if self.is_safe_position(agent.pos):
+                    agent.time_since_last_meal = 0
                 # Reproduce
                 if random.random() < self.prey_birth_probability:
                     self.create_agent(PREY, near=prey.pos)
@@ -140,17 +151,10 @@ class PredatorPreyModel:
                 for (x, y) in self.neighbors(predator.pos):
                     for neighbor in self.lattice[x][y]:
                         if neighbor.type == PREY:
+                            predator.time_since_last_meal = 0
+                            self.remove_agent(neighbor)
                             if random.random() < self.predator_birth_rate:
-                                neighbor.type = PREDATOR
-                                # NOTE(Pontus): They are vampires ;)
-                            else:
-                                self.remove_agent(neighbor)
-                        
-                # Die
-                # TODO(Pontus): Let them die of starvation (time_since_last_meal)
-                # instead of randomly?
-                if random.random() < self.predator_death_probability:
-                    self.remove_agent(predator)
+                                self.create_agent(PREDATOR, near=predator.pos)
             
     def neighbors(self, pos):
         x, y = pos
@@ -174,13 +178,14 @@ class PredatorPreyModel:
         
 
 if __name__ == '__main__':
-    period = 30
-    world = PredatorPreyModel(period)
-    counts = world.run(animating = True, iteration_count = 1000)
+    period = 10
+    water_level = 0.1
+    world = PredatorPreyModel(period, water_level)
+    counts = world.run(animating = True, iteration_count = 10000)
     
     fig, ((map_plot, dynamics_plot), (phase_plot, frequency_plot)) = plt.subplots(2, 2)
 
-    map_plot.imshow(world.terrain.T < 0, cmap=plt.cm.gray, vmin=-3)
+    map_plot.imshow(world.terrain.T < 0, cmap=plt.cm.gray, vmin=-3, vmax=1)
     map_plot.set_title("Period: {}".format(period))
     
     dynamics_plot.plot(counts.T)
