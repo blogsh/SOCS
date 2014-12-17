@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from noise import snoise2
 import random
+from datetime import datetime
+import os
 
 
 PREDATOR = "Predator"
@@ -192,9 +194,13 @@ if __name__ == '__main__':
     period = 10
     water_level = 0.1
     world = PredatorPreyModel(period, water_level)
-    counts, animation = world.run(animating = True, iteration_count = 100)
+    population_counts, animation = world.run(animating = True, iteration_count = 100)
     if animation:
-        animation.save("PredPreyAnimation.mp4", fps=30, codec="libx264")
+        directory = "videos"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        filename = "{}/{}.mp4".format(directory, datetime.now())
+        animation.save(filename, fps=20, codec="libx264")
         plt.show()
     
     fig, ((map_plot, dynamics_plot), (phase_plot, frequency_plot)) = plt.subplots(2, 2)
@@ -202,24 +208,24 @@ if __name__ == '__main__':
     map_plot.imshow(world.terrain.T < 0, cmap=plt.cm.gray, vmin=-3, vmax=1)
     map_plot.set_title("Period: {}".format(period))
     
-    dynamics_plot.plot(counts.T)
+    dynamics_plot.plot(population_counts.T)
     dynamics_plot.legend([PREDATOR, PREY])
     dynamics_plot.set_title("Population dynamics")
     dynamics_plot.set_xlabel(r"Time $t$")
     dynamics_plot.set_ylabel(r"Population size")
     
-    phase_plot.plot(counts[0,:], counts[1,:])
+    phase_plot.plot(population_counts[0,:], population_counts[1,:])
     phase_plot.set_title("Phase diagram")
     phase_plot.set_xlabel("Predator")
     phase_plot.set_ylabel("Prey")
     
     import numpy.fft
     # NOTE(Pontus): Skip constant freq f = 0
-    counts_fft = abs(np.fft.rfft(counts))[:,1:] 
-    f = np.fft.rfftfreq(counts.shape[1])[1:]
+    population_counts_fft = abs(np.fft.rfft(population_counts))[:,1:] 
+    f = np.fft.rfftfreq(population_counts.shape[1])[1:]
     
-    frequency_plot.plot(f, counts_fft[0,:], label=PREDATOR)
-    frequency_plot.plot(f, counts_fft[1,:], label=PREY)
+    frequency_plot.plot(f, population_counts_fft[0,:], label=PREDATOR)
+    frequency_plot.plot(f, population_counts_fft[1,:], label=PREY)
     frequency_plot.legend()
     frequency_plot.set_title("Frequency domain")
     frequency_plot.set_xlabel("Frequency")
