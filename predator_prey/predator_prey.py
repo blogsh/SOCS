@@ -1,9 +1,12 @@
 from __future__ import division
 import numpy as np
 import numpy.random
+import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 from noise import snoise2
 import random
+
 
 PREDATOR = "Predator"
 PREY = "Prey"
@@ -33,11 +36,10 @@ class PredatorPreyModel:
         [self.create_agent(PREY)     for i in range(self.initial_prey_count)]
 
     def run(self, animating = False, iteration_count = 10000):
+        
         population_counts = np.zeros((2, iteration_count), dtype=int)
-        if animating:
-            self.init_drawing()
-            
-        for t in range(iteration_count):
+        
+        def loop(t):
             self.step()
             for agent in self.agents:
                 if agent.type == PREDATOR:
@@ -48,22 +50,31 @@ class PredatorPreyModel:
                 return population_counts[:,:t+1]
             if animating:
                 self.draw()
-                    
+        
         if animating:
-            plt.close()
+            figure = plt.figure()
+            animation = FuncAnimation(figure, loop, init_func=self.init_drawing,
+                                      frames=iteration_count)
+        else:
+            for t in range(iteration_count):
+                loop(t)
+            animation = None
             
-        return population_counts
+        return population_counts, animation
     
     def init_drawing(self):
         # NOTE(Pontus): This rescales the colormap so that zero is in the middle
         # terrain_max = np.amax(abs(self.terrain))
         # plt.imshow(self.terrain.T, cmap=plt.cm.coolwarm,
         #            vmin = -terrain_max, vmax = terrain_max)
-        plt.imshow(self.terrain.T < 0, cmap=plt.cm.gray, vmin=-3, vmax=1)
+        plt.imshow(self.terrain.T < 0, cmap=plt.cm.gray, vmin=-3, vmax=1, interpolation="nearest")
         plt.axis("tight")
+        plt.gca().get_xaxis().set_visible(False)
+        plt.gca().get_yaxis().set_visible(False)
         
         self.predator_plot, = plt.plot([], [], "r.")
         self.prey_plot,     = plt.plot([], [], "g.")
+    
     
     def draw(self):
         predator_positions = np.array([agent.pos for agent in self.agents
@@ -181,7 +192,10 @@ if __name__ == '__main__':
     period = 10
     water_level = 0.1
     world = PredatorPreyModel(period, water_level)
-    counts = world.run(animating = True, iteration_count = 10000)
+    counts, animation = world.run(animating = True, iteration_count = 100)
+    if animation:
+        animation.save("PredPreyAnimation.mp4", fps=30, codec="libx264")
+        plt.show()
     
     fig, ((map_plot, dynamics_plot), (phase_plot, frequency_plot)) = plt.subplots(2, 2)
 
