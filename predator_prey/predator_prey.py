@@ -20,15 +20,15 @@ class Agent:
         self.time_since_last_meal = 0
 
 class PredatorPreyModel:
-    initial_predator_count = 100
+    initial_predator_count = 10
     initial_prey_count = 200
-    starvation_time = 100
+    starvation_time = 50
     prey_birth_probability = 0.06
     predator_birth_rate = 0.5
     movement_rate = 0.8
     grid_shape = (100, 100)
 
-    def __init__(self, period = 30, water_level=0.2):
+    def __init__(self, period = 30, water_level = 0.2):
         width, height = self.grid_shape
         self.terrain = self.generate_terrain(water_level=water_level, period=period, 
                                              fractal_depth=2, randomly=True)
@@ -42,28 +42,34 @@ class PredatorPreyModel:
         population_counts = np.zeros((2, iteration_count), dtype=int)
         
         def loop(t):
+            if animating:
+                self.draw()
             self.step()
             for agent in self.agents:
                 if agent.type == PREDATOR:
                     population_counts[0,t] += 1
                 else:
                     population_counts[1,t] += 1
-            if np.any(population_counts[:,t] == 0):
-                return population_counts[:,:t+1]
-            if animating:
-                self.draw()
         
         if animating:
             figure = plt.figure()
             figure.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
             animation = FuncAnimation(figure, loop, init_func=self.init_drawing,
                                       frames=iteration_count)
+            # save video
+            directory = "videos"
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            filename = "{}/{}.mp4".format(directory, datetime.now())
+            animation.save(filename, fps=20, codec="libx264", extra_args=['-pix_fmt','yuv420p'])
         else:
+            animation = None
             for t in range(iteration_count):
                 loop(t)
-            animation = None
-            
-        return population_counts, animation
+                if np.any(population_counts[:,t] == 0):
+                    return population_counts[:, :t + 1]
+        
+        return population_counts
     
     def init_drawing(self):
         # NOTE(Pontus): This rescales the colormap so that zero is in the middle
@@ -84,8 +90,15 @@ class PredatorPreyModel:
                                                  if agent.type == PREDATOR])
         prey_positions = np.array([agent.pos for agent in self.agents
                                                  if agent.type == PREY])
-        self.predator_plot.set_data(predator_positions.T)
-        self.prey_plot.set_data(prey_positions.T)
+        if predator_positions.size:
+            self.predator_plot.set_data(predator_positions.T)
+        else:
+            self.predator_plot.set_data([],[])
+            
+        if prey_positions.size:
+            self.prey_plot.set_data(prey_positions.T)
+        else:
+            self.prey_plot.set_data([],[])
         plt.draw()
         plt.pause(0.0001)
     
@@ -192,17 +205,10 @@ class PredatorPreyModel:
         
 
 if __name__ == '__main__':
-    period = 10
-    water_level = 0.1
+    period = 30
+    water_level = 0.3
     world = PredatorPreyModel(period, water_level)
-    population_counts, animation = world.run(animating = True, iteration_count = 100)
-    if animation:
-        directory = "videos"
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        filename = "{}/{}.mp4".format(directory, datetime.now())
-        animation.save(filename, fps=20, codec="libx264", extra_args=['-pix_fmt','yuv420p'])
-        plt.show()
+    population_counts = world.run(animating = True, iteration_count = 1000)
     
     fig, ((map_plot, dynamics_plot), (phase_plot, frequency_plot)) = plt.subplots(2, 2)
 
