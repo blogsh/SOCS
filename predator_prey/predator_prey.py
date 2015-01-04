@@ -4,6 +4,7 @@ import numpy.random
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d import Axes3D
 from noise import snoise2
 import random
 from datetime import datetime
@@ -20,7 +21,6 @@ class Agent:
         self.time_since_last_meal = 0
 
 class PredatorPreyModel:
-    initial_predator_count = 10
     initial_prey_count = 200
     starvation_time = 50
     prey_birth_probability = 0.06
@@ -28,9 +28,10 @@ class PredatorPreyModel:
     movement_rate = 0.8
     grid_shape = (100, 100)
 
-    def __init__(self, period = 30, water_level = 0.2):
+    def __init__(self, initial_predator_count = 10, water_level = 0.2):
+        self.initial_predator_count = initial_predator_count
         width, height = self.grid_shape
-        self.terrain = self.generate_terrain(water_level=water_level, period=period, 
+        self.terrain = self.generate_terrain(water_level=water_level, period=30, 
                                              fractal_depth=2, randomly=True)
         self.lattice = [[[] for _ in range(width)] for _ in range(height)]
         self.agents = []
@@ -102,7 +103,7 @@ class PredatorPreyModel:
         plt.draw()
         plt.pause(0.0001)
     
-    def generate_terrain(self, water_level, period, fractal_depth, randomly=False):
+    def generate_terrain(self, period, water_level = 0, fractal_depth = 2, randomly=False):
         """
         Generates a pseudo-random terrain matrix. 
         Values > 0 are land and values < 0 are water.
@@ -202,18 +203,22 @@ class PredatorPreyModel:
         x, y = pos
         x_max, y_max = self.grid_shape
         return (0 <= x < x_max) and (0 <= y < y_max)
-        
 
-if __name__ == '__main__':
-    period = 30
-    water_level = 0.3
-    world = PredatorPreyModel(period, water_level)
-    population_counts = world.run(animating = True, iteration_count = 1000)
+def plot_landscape(model, water_level):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    width, height = model.grid_shape
+    x, y = np.meshgrid(range(width), range(height))
+    terrain = model.generate_terrain(period=50)
+    ax.plot_surface(x, y, terrain, rstride=5, cstride=5, cmap=plt.cm.coolwarm)
     
-    fig, ((map_plot, dynamics_plot), (phase_plot, frequency_plot)) = plt.subplots(2, 2)
+    fig, ax = plt.subplots()
+    ax.imshow(model.terrain.T < 0, cmap=plt.cm.gray, vmin=-3, vmax=1)
 
-    map_plot.imshow(world.terrain.T < 0, cmap=plt.cm.gray, vmin=-3, vmax=1)
-    map_plot.set_title("Period: {}".format(period))
+def plot_analysis(model, population_counts):
+    fig, ((map_plot, dynamics_plot), (phase_plot, frequency_plot)) = plt.subplots(2, 2)
+    
+    map_plot.imshow(model.terrain.T < 0, cmap=plt.cm.gray, vmin=-3, vmax=1)
     
     dynamics_plot.plot(population_counts.T)
     dynamics_plot.legend([PREDATOR, PREY])
@@ -240,5 +245,47 @@ if __name__ == '__main__':
     frequency_plot.set_xscale("log")
     frequency_plot.set_yscale("log")
     frequency_plot.axis("tight")
+    
+def plot_average_extinction_time(sample_count = 10, iteration_count = 10000):
+
+    @np.vectorize
+    def extinction_plot(pred0, water_level):
+        print("pred0:", pred0, "water_level:", water_level)
+        sum = 0
+        for run in range(sample_count):
+            initial_predator_count = int(pred0 / (1 - pred0) * PredatorPreyModel.initial_prey_count)
+            model = PredatorPreyModel(initial_predator_count, water_level)
+            population_counts = model.run(animating=False, iteration_count=iteration_count)
+            final_time = population_counts.shape[1]
+            extinction = (final_time != iteration_count)
+            if extinction:
+                sum += final_time
+        average = sum / sample_count
+        print(average)
+        return average
+        
+    pred0s = np.linspace(0.01, 0.5, 5)
+    water_levels = np.linspace(-1, 0.4, 5)
+    pred0s, water_levels = np.meshgrid(pred0s, water_levels)
+    extinction_time = extinction_plot(pred0s, water_levels)
+    directory = "data"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    np.savetxt(directory + "/pred0s.tsv", pred0s)
+    np.savetxt(directory + "/water_levels.tsv", water_levels)
+    np.savetxt(directory + "/extinction_time.tsv", extinction_time)
+    plt.figure()
+    contours = plt.contour(pred0s, water_levels, extinction_time)
+    plt.clabel(contours, inline=1)
+    plt.xlabel(r"Initial fraction of predators")
+    plt.ylabel(r"Water level")
+    plt.colorbar()
+
+if __name__ == '__main__':
+    
+    # model = PredatorPreyModel(initial_predator_count=100, water_level = -1)
+    # population_counts = model.run(animating=True, iteration_count=10000)
+    # plot_analysis(model, population_counts)
+    plot_average_extinction_time(sample_count = 10)
     
     plt.show()
