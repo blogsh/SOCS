@@ -56,3 +56,6 @@ target/
 # Our own stuff
 predator_prey/videos/
 predator_prey/data/
+
+sebastian/data
+none.dat
