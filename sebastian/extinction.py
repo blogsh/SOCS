@@ -41,11 +41,11 @@ def bisect_measure(K, death_rate, growth_rate):
 	params = dict(
 		terrain = dict(
 			land = 16 * 16,
-			boxes = 1,
-			distance = 0
+			boxes = 8,
+			distance = 1
 		),
 
-		migration_rate = 0.0,
+		migration_rate = 1.0,
 		growth_rate = growth_rate,
 		death_rate = death_rate,
 
@@ -57,28 +57,36 @@ def bisect_measure(K, death_rate, growth_rate):
 
 if __name__ == '__main__':
 	K = 10
-	growth = 0.07
+	growths = [0.001, 0.005, 0.01, 0.02, 0.03, 0.05, 0.06, 0.07, 0.1, 0.15, 0.2, 0.4]
 
-	adeath = 0.15
-	bdeath = 0.3
+	for growth in growths:
+		adeath = 0.01
+		bdeath = 0.5
 
-	extinct, abort = bisect_measure(K, adeath, growth)
-	assert(extinct == 0)
-	print("Lower bound is OK: %d/%d" % (extinct,abort))
+		print("GROWTH: %f" % growth)
 
-	extinct, abort = bisect_measure(K, bdeath, growth)
-	assert(extinct > 0)
-	print("Upper bound is OK: %d/%d" % (extinct,abort))
+		extinct, abort = bisect_measure(K, adeath, growth)
+		assert(extinct == 0)
+		print("    Lower bound is OK: %d/%d" % (extinct,abort))
 
-	while True:
-		cdeath = adeath + (bdeath - adeath) * 0.5
-		extinct, abort = bisect_measure(K, cdeath, growth)
+		extinct, abort = bisect_measure(K, bdeath, growth)
+		assert(extinct > 0)
+		print("    Upper bound is OK: %d/%d" % (extinct,abort))
 
-		print("Value %f gives %d/%d" % (cdeath, extinct, abort))
+		while True:
+			cdeath = adeath + (bdeath - adeath) * 0.5
+			extinct, abort = bisect_measure(K, cdeath, growth)
 
-		if extinct == 0:
-			adeath = cdeath
-		else:
-			bdeath = cdeath
+			print("    Value %f gives %d/%d" % (cdeath, extinct, abort))
 
-		print("New Bounds: %f / %f" % (adeath, bdeath))
+			if extinct == 0:
+				adeath = cdeath
+			else:
+				bdeath = cdeath
+
+			print("    New Bounds: %f / %f" % (adeath, bdeath))
+
+			if round(adeath, 2) == round(bdeath, 2):
+				break
+
+		print("RESULT FOR %f: %f" % (growth, adeath))
