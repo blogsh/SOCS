@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import random, model
+import random, model3
 import multiprocessing as mp
 
 def measure(Tmax, Nmax, K, params):
@@ -20,7 +20,7 @@ def measure(Tmax, Nmax, K, params):
 		)
 
 		states.append(state)
-		pool.apply_async(model.track, args=(state,params))
+		pool.apply_async(model3.track, args=(state,params))
 
 	pool.close()
 	pool.join()
@@ -38,15 +38,21 @@ def bisect_measure(K, death_rate, growth_rate):
 	Tmax = 1000
 	Nmax = 1200
 
-	params = dict(
-		terrain = dict(
-			land = 16 * 16,
-			boxes = 9,
-			distance = 1
-		),
+	s = 4
+	#Nmax = 1.1 * s * s
+	terrain = np.ones((s, s)).astype(np.int)
 
-		migration_rate = 1.0,
-		growth_rate = growth_rate,
+	terrain = np.zeros((16, 16))
+	terrain[0:8, 0:8] = 1
+	terrain[0:8, 8:16] = 2
+	terrain[8:16, 0:8] = 3
+	terrain[8:16, 8:16] = 4
+
+	params = dict(
+		terrain = terrain,
+
+		migration_rate = growth_rate,
+		growth_rate = 0.2,
 		death_rate = death_rate,
 
 		initial_prey = 0.05,
@@ -57,13 +63,20 @@ def bisect_measure(K, death_rate, growth_rate):
 
 if __name__ == '__main__':
 	K = 10
-	growths = [0.001, 0.005, 0.01, 0.02, 0.03, 0.05, 0.06, 0.07, 0.1, 0.15, 0.2, 0.4]
+	#growths = [0.001, 0.005, 0.01, 0.02, 0.03, 0.05, 0.06, 0.07, 0.1, 0.15, 0.2, 0.4]
+	growths = [0.0, 0.25, 0.5, 0.75, 1.0]
+	growths = [1.0]
+
+	vals = []
 
 	for growth in growths:
-		adeath = 0.001
-		bdeath = 0.5
+		#adeath = 0.001
+		#death = 0.5 * growth
+		#bdeath = 0.45
+		adeath = 0.1
+		bdeath = 0.4
 
-		print("GROWTH: %f" % growth)
+		print("MIG: %f" % growth)
 
 		extinct, abort = bisect_measure(K, adeath, growth)
 		assert(extinct == 0)
@@ -86,7 +99,10 @@ if __name__ == '__main__':
 
 			print("    New Bounds: %f / %f" % (adeath, bdeath))
 
-			if round(adeath, 2) == round(bdeath, 2):
+			if round(adeath, 2) == round(bdeath, 2) and abort == 0:
 				break
 
 		print("RESULT FOR %f: %f" % (growth, adeath))
+		vals.append(adeath)
+
+	print("AVERAGE", np.sum(vals) / 10.0)
