@@ -4,6 +4,7 @@
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
 #include <iostream>
+#include <sstream>
 
 #define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
@@ -326,6 +327,7 @@ struct ModelRenderer {
 	GLFWwindow* mWindow;
 	bool mRunning = true;
 	Model& mModel;
+	int mSteps = 0;
 
 	ModelRenderer(Model& model) : mModel(model) {
 		glfwInit();
@@ -337,7 +339,13 @@ struct ModelRenderer {
 	}
 
 	void step() {
+		mSteps += 1;
 		if (glfwWindowShouldClose(mWindow)) mRunning = false;
+
+		std::ostringstream title;
+		title << "Iteration " << mSteps;
+
+		glfwSetWindowTitle(mWindow, title.str().c_str());
 
 		if (mRunning) {
 			float ratio;
@@ -408,30 +416,104 @@ struct ModelRenderer {
 	}
 };
 
-int main(int argc, char* argv[]) {
+struct Plotter {
+	GLFWwindow* mWindow;
+	bool mRunning = true;
+
+	Plotter() {
+		glfwInit();
+		mWindow = glfwCreateWindow(600, 600, "SOCS", NULL, NULL);
+
+		if (mWindow) {
+			glfwMakeContextCurrent(mWindow);
+		}
+	}
+
+	void begin() {
+		if (glfwWindowShouldClose(mWindow)) mRunning = false;
+
+		if (mRunning) {
+			float ratio;
+	        int width, height;
+
+	        glfwGetFramebufferSize(mWindow, &width, &height);
+	        ratio = width / (float) height;
+
+	        glViewport(0, 0, width, height);
+	        glClear(GL_COLOR_BUFFER_BIT);
+	        glMatrixMode(GL_PROJECTION);
+	        glLoadIdentity();
+
+	        gluOrtho2D(0.0, 1.0, 0.0, 1.0);
+	        glPointSize(5.0);
+
+	        glMatrixMode(GL_MODELVIEW);
+	        glLoadIdentity();
+	    }
+	}
+
+	float coord(float value, float min, float max) {
+		return (value - min) / (max - min);
+	}
+
+	void plot(const Eigen::ArrayXf& x, const Eigen::ArrayXf& y, const Eigen::Vector3f& color) {
+		float maxx = x.maxCoeff();
+		float minx = x.minCoeff();
+
+		float maxy = y.maxCoeff();
+		float miny = y.minCoeff();
+
+		assert(x.rows() == y.rows());
+
+		glBegin(GL_LINE_STRIP);
+		glColor3fv(color.data());
+
+		for (int i = 0; i < x.rows(); i++) {
+			glVertex2f(coord(x[i], minx, maxx), coord(y[i], miny, maxy));
+		}
+
+		glEnd();
+	}
+
+	void end() {
+		if (mRunning) {
+	        glfwSwapBuffers(mWindow);
+	        glfwPollEvents();
+		}
+	}
+
+	~Plotter() {
+		if (mWindow) glfwDestroyWindow(mWindow);
+		glfwTerminate();
+	}
+};
+
+
+
+int main2(int argc, char* argv[]) {
 	srand(time(0));
 
 	Params params;
 
-	params.migrationRate = 0.1;
-	params.growthRate = 0.001;
-	params.deathRate = 0.05;
+	params.migrationRate = 1.0;
+	params.growthRate = 0.005;
+	params.deathRate = 0.04;
 
 	params.initialPreyRate = 0.55;
 	params.initialPredatorRate = 0.05;
 
-	params.terrain = Eigen::MatrixXi::Constant(16, 16, 1);
+	//params.terrain = Eigen::MatrixXi::Constant(16, 16, 1);
 
-	Eigen::MatrixXi area1 = Eigen::MatrixXi::Constant(32, 32, 1);
-	Eigen::MatrixXi area2 = Eigen::MatrixXi::Constant(32, 32, 2);
-	Eigen::MatrixXi area3 = Eigen::MatrixXi::Constant(32, 32, 3);
-	Eigen::MatrixXi area4 = Eigen::MatrixXi::Constant(32, 32, 4);
-	Eigen::MatrixXi area5 = Eigen::MatrixXi::Constant(32, 32, 5);
-	Eigen::MatrixXi area6 = Eigen::MatrixXi::Constant(32, 32, 6);
-	Eigen::MatrixXi area7 = Eigen::MatrixXi::Constant(32, 32, 7);
-	Eigen::MatrixXi area8 = Eigen::MatrixXi::Constant(32, 32, 8);
+	Eigen::MatrixXi area1 = Eigen::MatrixXi::Constant(8, 8, 1);
+	Eigen::MatrixXi area2 = Eigen::MatrixXi::Constant(8, 8, 2);
+	Eigen::MatrixXi area3 = Eigen::MatrixXi::Constant(8, 8, 3);
+	Eigen::MatrixXi area4 = Eigen::MatrixXi::Constant(8, 8, 4);
+	Eigen::MatrixXi area5 = Eigen::MatrixXi::Constant(8, 8, 5);
+	Eigen::MatrixXi area6 = Eigen::MatrixXi::Constant(8, 8, 6);
+	Eigen::MatrixXi area7 = Eigen::MatrixXi::Constant(8, 8, 7);
+	Eigen::MatrixXi area8 = Eigen::MatrixXi::Constant(8, 8, 8);
 
-	Eigen::MatrixXi terrain(32, 8 * 32);
+	Eigen::MatrixXi terrain(8, 8 * 8);
 	terrain << area1, area2, area3, area4, area5, area6, area7, area8;
 
 	/*Eigen::MatrixXi area1 = Eigen::MatrixXi::Constant(8, 8, 1);
@@ -455,61 +537,157 @@ int main(int argc, char* argv[]) {
 	return 1;
 }
 
-int main2(int argc, char* argv[]) {
+void plot(Plotter& plotter, const Eigen::ArrayXf& x, const Eigen::ArrayXf& y) {
+	plotter.begin();
+	plotter.plot(x, y, Eigen::Vector3f(1.0f, 0.0f, 0.0f));
+	plotter.end();
+}
+
+int main3(int argc, char* argv[]) {
 	srand(time(0));
 
 	Params params;
 
 	params.migrationRate = 0.5;
-	params.growthRate = 0.01;
-	params.deathRate = 0.14;
+	params.growthRate = 0.005;
+	params.deathRate = 0.1;
 
 	params.initialPreyRate = 0.55;
 	params.initialPredatorRate = 0.05;
 
-	Eigen::MatrixXi area1 = Eigen::MatrixXi::Constant(16, 16, 1);
-	Eigen::MatrixXi area2 = Eigen::MatrixXi::Constant(16, 16, 2);
-	Eigen::MatrixXi area3 = Eigen::MatrixXi::Constant(16, 16, 3);
-	Eigen::MatrixXi area4 = Eigen::MatrixXi::Constant(16, 16, 4);
-	Eigen::MatrixXi area5 = Eigen::MatrixXi::Constant(16, 16, 5);
-	Eigen::MatrixXi area6 = Eigen::MatrixXi::Constant(16, 16, 6);
-	Eigen::MatrixXi area7 = Eigen::MatrixXi::Constant(16, 16, 7);
-	Eigen::MatrixXi area8 = Eigen::MatrixXi::Constant(16, 16, 8);
+	Eigen::MatrixXi area1 = Eigen::MatrixXi::Constant(8, 8, 1);
+	Eigen::MatrixXi area2 = Eigen::MatrixXi::Constant(8, 8, 2);
+	Eigen::MatrixXi area3 = Eigen::MatrixXi::Constant(8, 8, 3);
+	Eigen::MatrixXi area4 = Eigen::MatrixXi::Constant(8, 8, 4);
+	Eigen::MatrixXi area5 = Eigen::MatrixXi::Constant(8, 8, 5);
+	Eigen::MatrixXi area6 = Eigen::MatrixXi::Constant(8, 8, 6);
+	Eigen::MatrixXi area7 = Eigen::MatrixXi::Constant(8, 8, 7);
+	Eigen::MatrixXi area8 = Eigen::MatrixXi::Constant(8, 8, 8);
 
-	Eigen::MatrixXi terrain(16, 8 * 16);
+	Eigen::MatrixXi terrain(8, 8 * 8);
 	terrain << area1, area2, area3, area4, area5, area6, area7, area8;
 
 	params.terrain = terrain; //Eigen::MatrixXi::Constant(16, 16, 1);
 
-	const int T = 1000;
-	const int K = 100;
+	const int T = 2000;
+	const int K = 25;
 
-	std::vector<float> nsum(T);
-	for (int t = 0; t < T; t++) nsum[t] = 0;
+	Plotter plotter;
 
-	for (int k = 0; k < K; k++) {
-		Model model(params);
-		
-		for (int t = 0; t < T; t++) {
-			if (model.mPredators.sum() > 0) {
-				nsum[t] += 1.0;
-			} else {
-				break;
+	Eigen::ArrayXf m = Eigen::ArrayXf::LinSpaced(11, 0.0, 1.0);
+	Eigen::ArrayXf p = Eigen::ArrayXf::Zero(m.rows());
+
+	for (int j = 0; j < m.rows() && plotter.mRunning; j++) {
+		/*Eigen::ArrayXf t = Eigen::ArrayXf::Zero(T);
+		Eigen::ArrayXf n = Eigen::ArrayXf::Zero(T);
+
+		for (int i = 0; i < T; i++) {
+			t[i] = i;
+		}*/
+
+		float Tsum = 0.0f;
+		float Nsum = 0.0;
+
+		for (int k = 0; k < K && plotter.mRunning; k++) {
+			params.migrationRate = m[j];
+			Model model(params);
+
+			float T = 0.0f;
+
+			while (T < 1e4) {
+				if (model.mPredators.sum() == 0) break;
+				model.step();
+				T += 1.0;
 			}
 
-			model.step();
+			Tsum += T;
+			Nsum += 1.0;
+
+			p[j] = Tsum / Nsum;
+			
+			/*for (int t = 0; t < T && plotter.mRunning; t++) {
+				if (model.mPredators.sum() > 0) {
+					n[t] += 1.0;
+				} else {
+					break;
+				}
+
+				model.step();
+			}*/
+
+			plot(plotter, m, p);
+			std::cout << k << std::endl;
 		}
 
-		//Eigen::Map<Eigen::ArrayXi> data2(nsum.data(), T);
-		Eigen::ArrayXf data = Eigen::Map<Eigen::ArrayXf>(nsum.data(), T);
-		data /= (float)K;
+		//p[j] = n[n.rows() - 1] / (float)K;
 
-		//std::cout << data.transpose() << std::endl;
-		//std::cout << "===" << std::endl;
-		//data /= (float)K;
+		std::cout << m.transpose() << std::endl;
+		std::cout << p.transpose() << std::endl;
+	}
 
-		//std::cout << fit_exponential(data) << std::endl;
-		std::cout << data[data.rows() - 1] << std::endl;
+	while (plotter.mRunning) plot(plotter, m, p);
+
+	return 1;
+}
+
+
+int main(int argc, char* argv[]) {
+	Eigen::ArrayXf initialFractions = Eigen::ArrayXf::LinSpaced(11, 0.0, 0.5);
+	Eigen::ArrayXf migrationRates = Eigen::ArrayXf::LinSpaced(11, 0.0, 1.0);
+
+	const float maximumTime = 5000;
+	const int K = 25;
+
+	srand(time(0));
+	Params params;
+
+	params.migrationRate = 0.0;
+	params.growthRate = 0.005;
+	params.deathRate = 0.08;
+
+	params.initialPreyRate = 0.55;
+	params.initialPredatorRate = 0.05;
+
+	Eigen::MatrixXi area1 = Eigen::MatrixXi::Constant(8, 8, 1);
+	Eigen::MatrixXi area2 = Eigen::MatrixXi::Constant(8, 8, 2);
+	Eigen::MatrixXi area3 = Eigen::MatrixXi::Constant(8, 8, 3);
+	Eigen::MatrixXi area4 = Eigen::MatrixXi::Constant(8, 8, 4);
+	Eigen::MatrixXi area5 = Eigen::MatrixXi::Constant(8, 8, 5);
+	Eigen::MatrixXi area6 = Eigen::MatrixXi::Constant(8, 8, 6);
+	Eigen::MatrixXi area7 = Eigen::MatrixXi::Constant(8, 8, 7);
+	Eigen::MatrixXi area8 = Eigen::MatrixXi::Constant(8, 8, 8);
+
+	Eigen::MatrixXi terrain(8, 8 * 8);
+	terrain << area1, area2, area3, area4, area5, area6, area7, area8;
+	params.terrain = terrain;
+
+	for (int i = 0; i < migrationRates.rows(); i++) {
+		params.migrationRate = migrationRates[i];
+
+		for (int j = 0; j < initialFractions.rows(); j++) {
+			params.initialPredatorRate = initialFractions[j];
+
+			float totalTime = 0.0;
+
+			for (int k = 0; k < K; k++) {
+				Model model(params);
+				float processTime = 0.0;
+
+				while (processTime < maximumTime) {
+					if (model.mPredators.sum() == 0) break;
+					processTime += 1.0;
+					model.step();
+				}
+
+				totalTime += processTime;
+			}
+
+			float averageTime = totalTime / (float)K;
+
+			std::cout << params.migrationRate << " ";
+			std::cout << params.initialPredatorRate << " ";
+			std::cout << averageTime << std::endl;
+		}
 	}
 
 	return 1;

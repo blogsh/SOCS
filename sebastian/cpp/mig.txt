@@ -1,0 +1,21 @@
+RUN 1
+
+  0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9   1
+  220.8  626.16 1321.12 1487.36 1776.48 2305.08 3119.52 3496.56 3614.88 3160.16 3474.12
+
+   params.deathRate = 0.08;
+
+RUN 2
+
+  0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9   1
+128.96 197.76 265.28 415.68 338.72 408.12 432.84 414.56  584.4 469.72 603.84
+
+   params.deathRate = 0.1;
+
+
+	params.migrationRate = 0.5;
+	params.growthRate = 0.005;
+	params.deathRate = 0.1;
+
+	params.initialPreyRate = 0.55;
+	params.initialPredatorRate = 0.05;
