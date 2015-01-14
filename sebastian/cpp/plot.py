@@ -7,7 +7,7 @@ migration = []
 initial = []
 avgtime = []
 
-with open('data.txt') as f:
+with open('data3.txt') as f:
 	for line in f:
 		m, i, a = line.split(' ')
 		if float(i) > 0.0:
