@@ -9,7 +9,9 @@ from noise import snoise2
 import random
 from datetime import datetime
 import os
-
+import multiprocessing as mp
+import itertools
+from matplotlib.mlab import griddata
 
 PREDATOR = "Predator"
 PREY = "Prey"
@@ -24,7 +26,7 @@ class PredatorPreyModel:
     initial_prey_count = 200
     starvation_time = 50
     prey_birth_probability = 0.06
-    predator_birth_rate = 0.5
+    predator_birth_rate = 0.1
     movement_rate = 0.8
     grid_shape = (100, 100)
 
@@ -245,37 +247,47 @@ def plot_analysis(model, population_counts):
     frequency_plot.set_xscale("log")
     frequency_plot.set_yscale("log")
     frequency_plot.axis("tight")
+
+#@np.vectorize
+def extinction_plot(pred0, water_level, sample_count = 10, iteration_count=10000):
+    print("pred0:", pred0, "water_level:", water_level)
+    sum = 0
+    for run in range(sample_count):
+        initial_predator_count = int(pred0 / (1 - pred0) * PredatorPreyModel.initial_prey_count)
+        model = PredatorPreyModel(initial_predator_count, water_level)
+        population_counts = model.run(animating=False, iteration_count=iteration_count)
+        final_time = population_counts.shape[1]
+        extinction = (final_time != iteration_count)
+        if extinction:
+            sum += final_time
+    average = sum / sample_count
+    print(average)
+    return pred0, water_level, average
     
 def plot_average_extinction_time(sample_count = 10, iteration_count = 10000):
-
-    @np.vectorize
-    def extinction_plot(pred0, water_level):
-        print("pred0:", pred0, "water_level:", water_level)
-        sum = 0
-        for run in range(sample_count):
-            initial_predator_count = int(pred0 / (1 - pred0) * PredatorPreyModel.initial_prey_count)
-            model = PredatorPreyModel(initial_predator_count, water_level)
-            population_counts = model.run(animating=False, iteration_count=iteration_count)
-            final_time = population_counts.shape[1]
-            extinction = (final_time != iteration_count)
-            if extinction:
-                sum += final_time
-        average = sum / sample_count
-        print(average)
-        return average
-        
     pred0s = np.linspace(0.01, 0.5, 5)
     water_levels = np.linspace(-1, 0.4, 5)
-    pred0s, water_levels = np.meshgrid(pred0s, water_levels)
-    extinction_time = extinction_plot(pred0s, water_levels)
+    #pred0s, water_levels = np.meshgrid(pred0s, water_levels)
+    #extinction_time = extinction_plot(pred0s, water_levels)
+
+    pool = mp.Pool(8)
+    tasks = [pool.apply_async(extinction_plot, args=args) for args in itertools.product(pred0s, water_levels)]
+    pred0s, water_levels, extinction_time = zip(*[t.get() for t in tasks])
+
+    xi = np.linspace(min(pred0s), max(pred0s))
+    yi = np.linspace(min(water_levels), max(water_levels))
+
+    X, Y = np.meshgrid(xi, yi)
+    Z = griddata(pred0s, water_levels, extinction_time, xi, yi)
+
     directory = "data"
     if not os.path.exists(directory):
         os.makedirs(directory)
-    np.savetxt(directory + "/pred0s.tsv", pred0s)
-    np.savetxt(directory + "/water_levels.tsv", water_levels)
-    np.savetxt(directory + "/extinction_time.tsv", extinction_time)
+    np.savetxt(directory + "/pred0s.tsv", X)
+    np.savetxt(directory + "/water_levels.tsv", Y)
+    np.savetxt(directory + "/extinction_time.tsv", Z)
     plt.figure()
-    contours = plt.contour(pred0s, water_levels, extinction_time)
+    contours = plt.contour(X, Y, Z)
     plt.clabel(contours, inline=1)
     plt.xlabel(r"Initial fraction of predators")
     plt.ylabel(r"Water level")

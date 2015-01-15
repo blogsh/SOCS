@@ -7,7 +7,7 @@ migration = []
 initial = []
 avgtime = []
 
-with open('data3.txt') as f:
+with open('data4.txt') as f:
 	for line in f:
 		m, i, a = line.split(' ')
 		if float(i) > 0.0:
@@ -23,10 +23,15 @@ X, Y = np.meshgrid(xi, yi)
 Z = griddata(migration, initial, avgtime, xi, yi)
 
 fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.plot_wireframe(X, Y, Z, color='b')
+ax = fig.add_subplot(111)#, projection='3d')
+#ax.plot_wireframe(X, Y, Z, color='b')
+contours = plt.contour(X, Y, Z)
 plt.xlabel('Migration')
 plt.ylabel('Initial')
+plt.clabel(contours, inline=1)
+plt.colorbar()
+
+plt.plot([0.4, 0.4], [0.5, 0.05], 'k--')
 #plt.zlabel('Size')
 plt.show()
 

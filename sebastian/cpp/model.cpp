@@ -383,16 +383,15 @@ Params create_params() {
 	Params params;
 	int s = 32;
 
-	params.migrationRate = 1.0;
+	params.migrationRate = 0.01;
 	params.starvationTime = 50;
 	params.movementRate = 0.8;
 
 	params.preyBirthRate = 0.06;
-	params.predatorBirthRate = 0.1;
+	params.predatorBirthRate = 0.5; //0.1;
 
 	params.initialPreyCount = s * 6; //200;
-	params.initialPredatorCount = s / 3;
-
+	params.initialPredatorCount = 120;//s / 3;
 
 	Eigen::MatrixXi area1 = Eigen::MatrixXi::Constant(s, s, 1);
 	Eigen::MatrixXi area2 = Eigen::MatrixXi::Constant(s, s, 2);
@@ -465,17 +464,26 @@ int validation(int argc, char* argv[]) {
 
 	Params params;
 
-	params.migrationRate = 0.1;
+	params.migrationRate = 1.0;
 	params.starvationTime = 50;
 	params.movementRate = 0.8;
 
 	params.preyBirthRate = 0.06;
 	params.predatorBirthRate = 0.01;
 
-	params.initialPreyCount = 0.25 * 256;
-	params.initialPredatorCount = 0.1 * 256;
+	params.initialPreyCount = 0.25 * (256 * 4);
+	params.initialPredatorCount = 0.1 * (256 * 4);
 
-	params.terrain = Eigen::MatrixXi::Constant(16, 16, 1);
+	Eigen::MatrixXi row1(16, 2 * 16);
+	row1 << Eigen::MatrixXi::Constant(16, 16, 1), Eigen::MatrixXi::Constant(16, 16, 2);
+
+	Eigen::MatrixXi row2(16, 2 * 16);
+	row2 << Eigen::MatrixXi::Constant(16, 16, 3), Eigen::MatrixXi::Constant(16, 16, 4);
+
+	Eigen::MatrixXi terrain(2 * 16, 2 * 16);
+	terrain << row1, row2;
+
+	params.terrain = terrain;
 
 	Eigen::ArrayXf alive(5000);
 
@@ -495,7 +503,7 @@ int validation(int argc, char* argv[]) {
 		std::cout << k << std::endl;
 	}
 
-	std::ofstream stream("alive1x16x16.txt");
+	std::ofstream stream("alive32x32.txt");
 	stream << alive;
 
 	return 1;
@@ -505,7 +513,7 @@ int measurement(int argc, char* argv[]) {
 	const int K = 10;
 
 	Eigen::ArrayXf initialFractions = Eigen::ArrayXf::LinSpaced(11, 0.00, 0.5);
-	Eigen::ArrayXf migrationRates = Eigen::ArrayXf::LinSpaced(89, 0.3, 1.0);
+	Eigen::ArrayXf migrationRates = Eigen::ArrayXf::LinSpaced(11, 0.0, 1.0);
 
 	srand(time(0));
 	Params params = create_params();
@@ -540,6 +548,6 @@ int measurement(int argc, char* argv[]) {
 
 int main(int argc, char* argv[]) {
 	//return validation(argc, argv);
-	return measurement(argc, argv);
+	//return measurement(argc, argv);
 	return simulation(argc, argv);
 }
