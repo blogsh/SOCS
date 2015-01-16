@@ -249,7 +249,7 @@ def plot_analysis(model, population_counts):
     frequency_plot.axis("tight")
 
 #@np.vectorize
-def extinction_plot(pred0, water_level, sample_count = 10, iteration_count=10000):
+def extinction_plot(pred0, water_level, sample_count = 10, iteration_count=5000):
     print("pred0:", pred0, "water_level:", water_level)
     sum = 0
     for run in range(sample_count):
@@ -257,16 +257,17 @@ def extinction_plot(pred0, water_level, sample_count = 10, iteration_count=10000
         model = PredatorPreyModel(initial_predator_count, water_level)
         population_counts = model.run(animating=False, iteration_count=iteration_count)
         final_time = population_counts.shape[1]
-        extinction = (final_time != iteration_count)
-        if extinction:
-            sum += final_time
+        #extinction = (final_time != iteration_count)
+        #if extinction:
+        #    sum += final_time
+        sum += final_time
     average = sum / sample_count
     print(average)
     return pred0, water_level, average
     
 def plot_average_extinction_time(sample_count = 10, iteration_count = 10000):
-    pred0s = np.linspace(0.01, 0.5, 5)
-    water_levels = np.linspace(-1, 0.4, 5)
+    pred0s = np.linspace(0.01, 0.5, 10)
+    water_levels = np.linspace(-1, 0.4, 10)
     #pred0s, water_levels = np.meshgrid(pred0s, water_levels)
     #extinction_time = extinction_plot(pred0s, water_levels)
 
